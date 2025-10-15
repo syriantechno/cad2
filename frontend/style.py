@@ -11,7 +11,7 @@ QTabBar::tab {
     margin: 0px;
     border-radius: 0px;
     font-size: 14px;
-    min-width: 80px;
+    min-width: 60px;
     min-height: 40px;
 }
 
@@ -30,11 +30,11 @@ QToolButton {
     color: #000000;
     border: none;
     border-bottom: 3px solid transparent; /* خط أسفل الشفافة افتراضيًا */
-    padding: 5px;
+    padding: 4px;
     margin: 2px;
     font-size: 12px;
-    min-height: 80px;
-    min-width: 80px;
+    min-height: 40px;
+    min-width: 44px;
 }
 
 QToolButton:hover, QToolButton:pressed {

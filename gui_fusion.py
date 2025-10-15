@@ -167,6 +167,19 @@ class AlumCamGUI(QMainWindow):
         self.hole_preview = None
         self.extrude_axis = "Y"
 
+
+
+        def reload_ui(self):
+            try:
+                from frontend.style import TOPBAR_STYLE
+                self.setStyleSheet(TOPBAR_STYLE)
+                print("✅ UI reloaded successfully.")
+            except Exception as e:
+                print("❌ Failed to reload UI:", e)
+
+    reload_shortcut = QShortcut(QKeySequence("F5"), self)
+    reload_shortcut.activated.connect(self.reload_ui)
+
     def display_shape(self, shape):
         self.display.EraseAll()
         self.display.DisplayShape(shape, update=True)
