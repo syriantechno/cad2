@@ -39,7 +39,6 @@ def create_topbar_tabs(parent):
         ("frontend/icons/open.png", "Open File", parent.load_dxf, False),
         ("frontend/icons/new.png", "New File", lambda: print("New File"), False),
         ("frontend/icons/save.png", "Save File", lambda: print("Save File"), False),
-        ("frontend/icons/save_as.png", "Save As", lambda: print("Save As"), False),
         ("frontend/icons/import.png", "Import File", lambda: print("Import"), False),
         ("frontend/icons/export.png", "Export File", lambda: print("Export"), False)
     ]
