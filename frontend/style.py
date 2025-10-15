@@ -35,6 +35,7 @@ QToolButton {
     font-size: 12px;
     min-height: 40px;
     min-width: 44px;
+    
 }
 
 QToolButton:hover, QToolButton:pressed {

@@ -13,15 +13,15 @@ def create_topbar_tabs(parent):
         layout = QHBoxLayout(tab)
         layout.setAlignment(Qt.AlignLeft)
         layout.setSpacing(4)
-        layout.setContentsMargins(2, 0, 2, 0)
+        layout.setContentsMargins(2, 2, 2, 2)
 
         for icon_path, text, callback, checkable in tools:
             btn = QToolButton(parent)
             btn.setIcon(QIcon(icon_path))
             btn.setText(text)
             btn.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
-            btn.setIconSize(QSize(60, 60))
-            btn.setFixedSize(60, 60)
+            btn.setIconSize(QSize(48, 48))
+            btn.setFixedSize(48, 48)
             btn.setCheckable(checkable)
 
             if checkable:

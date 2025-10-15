@@ -15,7 +15,8 @@ from PyQt5.QtWidgets import (
     QDoubleSpinBox, QLineEdit, QToolBar, QAction
 )
 from PyQt5.QtCore import QTimer, Qt
-
+from PyQt5.QtWidgets import QShortcut
+from PyQt5.QtGui import QKeySequence
 # Project tools (expected to exist in your repo)
 from dxf_tools import load_dxf_file
 from extrude_tools import extrude_shape, add_hole, preview_hole
@@ -166,19 +167,22 @@ class AlumCamGUI(QMainWindow):
         self.loaded_shape = None
         self.hole_preview = None
         self.extrude_axis = "Y"
+        reload_shortcut = QShortcut(QKeySequence("F5"), self)
+        reload_shortcut.activated.connect(self.reload_ui)
+
+    def reload_ui(self):
+        try:
+            import importlib
+            styles = importlib.import_module("frontend.style")  # ← تحميل الملف
+            importlib.reload(styles)  # ← إعادة تحميله
+            self.setStyleSheet(styles.TOPBAR_STYLE)  # ← استخدامه
+            print("✅ UI reloaded dynamically")
+            print(styles.TOPBAR_STYLE[:800])  # أول 200 حرف من الستايل
+        except Exception as e:
+            print("❌ Reload failed:", e)
+            print(styles.TOPBAR_STYLE[:800])  # أول 200 حرف من الستايل
 
 
-
-        def reload_ui(self):
-            try:
-                from frontend.style import TOPBAR_STYLE
-                self.setStyleSheet(TOPBAR_STYLE)
-                print("✅ UI reloaded successfully.")
-            except Exception as e:
-                print("❌ Failed to reload UI:", e)
-
-    reload_shortcut = QShortcut(QKeySequence("F5"), self)
-    reload_shortcut.activated.connect(self.reload_ui)
 
     def display_shape(self, shape):
         self.display.EraseAll()
