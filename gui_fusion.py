@@ -59,6 +59,8 @@ class AlumCamGUI(QMainWindow):
         # ===== Viewer & Browser =====
         self.viewer_widget = qtViewer3d(self)
         self.display = self.viewer_widget._display
+        QTimer.singleShot(100, self._late_init_view)
+
         self.draw_axes()
 
         self.op_browser = OperationBrowser()
@@ -228,36 +230,48 @@ class AlumCamGUI(QMainWindow):
 
     # ===== Late init =====
     def _late_init_view(self):
-
+        print("[init] بدء تهيئة العرض الثلاثي")
         from OCC.Core.Quantity import Quantity_Color, Quantity_TOC_RGB, Quantity_NOC_GRAY
         from OCC.Core.V3d import V3d_TypeOfOrientation
 
         view = self.display.View
         viewer = self.display.Viewer
+        print("[init] تم الوصول إلى view و viewer")
 
         # خلفية رمادية
         light_gray = Quantity_Color(0.85, 0.85, 0.85, Quantity_TOC_RGB)
         view.SetBackgroundColor(light_gray)
+        print("[background] تم تعيين الخلفية إلى رمادي فاتح")
+
+        # تفعيل المحاور
+        from OCC.Core.Quantity import Quantity_NOC_BLACK
+        from OCC.Core.Aspect import Aspect_GT_Rectangular, Aspect_GDM_Lines
 
         # تفعيل المحاور
         try:
             view.TriedronDisplay(True)
-            view.SetTrihedronPosition(V3d_TypeOfOrientation.V3d_TOB_BOTTOM_LEFT)
-            view.SetTrihedronSize(0.5)  # حجم كبير وواضح
+            view.SetTrihedronSize(0.1)
             view.SetTrihedronVisibility(True)
-
+            view.MustBeResized()
+            view.Redraw()
+            print("[trihedron] تم تفعيل المحاور")
         except Exception as e:
             print(f"[trihedron] error: {e}")
 
         # تفعيل الشبكة
         try:
-            viewer.ActivateGrid(0)
-            viewer.SetGridColor(Quantity_NOC_GRAY)
+            viewer.ActivateGrid(Aspect_GT_Rectangular, Aspect_GDM_Lines, Aspect_GDM_Lines)
+            viewer.DisplayGrid()
+            viewer.SetGridColor(Quantity_NOC_BLACK)
+            view.MustBeResized()
+            view.Redraw()
+            print("[grid] تم تفعيل الشبكة")
         except Exception as e:
             print(f"[grid] error: {e}")
 
         # تحديث العارض
         self.display.Context.UpdateCurrentViewer()
+        print("[context] تم تحديث السياق")
         self.draw_axes()
 
     def on_toggle_grid_axes(self, checked: bool):

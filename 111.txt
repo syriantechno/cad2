@@ -1,0 +1,4 @@
+https://raw.githubusercontent.com/syriantechno/cad2/master/viewer.py
+https://raw.githubusercontent.com/syriantechno/cad2/master/gui_fusion.py
+https://raw.githubusercontent.com/syriantechno/cad2/master/frontend/topbar_tabs.py
+https://raw.githubusercontent.com/syriantechno/cad2/master/frontend/style.py

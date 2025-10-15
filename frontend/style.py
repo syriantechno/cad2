@@ -1,11 +1,11 @@
 TOPBAR_STYLE = """
 QTabWidget::pane {
     border: 0;
-    background: #F5F5F5;
+    background: #EAEAEA;
 }
 
 QTabBar::tab {
-    background: #F5F5F5;
+    background: #EAEAEA;
     color: #000000;
     padding: 0px 5px;
     margin: 0px;
@@ -47,12 +47,12 @@ QToolButton:checked {
 }
 
 QWidget {
-    background-color: #F5F5F5;
+    background-color: #EAEAEA;
 }
 """
 DOCK_STYLE = """
 QDockWidget {
-    background-color: #E0E0E0;
+    background-color: #EAEAEA;
     titlebar-close-icon: url(frontend/icons/close.png);
     titlebar-normal-icon: url(frontend/icons/float.png);
     font-size: 14px;
@@ -60,7 +60,7 @@ QDockWidget {
 }
 
 QWidget {
-    background-color: #F5F5F5;
+    background-color: #EAEAEA;
 }
 
 QLabel {

@@ -10,6 +10,8 @@ class OCCViewer(QWidget):
         super().__init__(parent)
 
         self.display = qtViewer3d(self)
+
+
         # الوصول إلى الكائن الداخلي للعرض
         viewer = self.display._display.Viewer
         view = self.display._display.View
