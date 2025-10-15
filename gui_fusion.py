@@ -138,12 +138,17 @@ class AlumCamGUI(QMainWindow):
         # ===== Background Setup =====
         def apply_background():
             print("⚡ Applying background color...")
-            self.display.set_bg_gradient_color(
-                Quantity_Color(0.85, 0.85, 0.85, Quantity_TOC_RGB),
-                Quantity_Color(0.85, 0.85, 0.85, Quantity_TOC_RGB),
-                True
-            )
-            self.display.View.FitAll()
+
+            try:
+                self.display.set_bg_gradient_color(
+                    Quantity_Color(0.85, 0.85, 0.85, Quantity_TOC_RGB),
+                    Quantity_Color(0.85, 0.85, 0.85, Quantity_TOC_RGB),
+                    True
+                )
+                self.display.View.FitAll()
+                print("✅ الخلفية تم تطبيقها")
+            except Exception as e:
+                print(f"❌ خطأ أثناء تطبيق الخلفية: {e}")
 
         QTimer.singleShot(1500, apply_background)
         self.draw_axes()
@@ -209,19 +214,19 @@ class AlumCamGUI(QMainWindow):
         x_line = Geom_Line(gp_Ax1(origin, gp_Dir(1, 0, 0)))
         self._axis_x = AIS_Line(x_line)
         self._axis_x.SetColor(Quantity_Color(Quantity_NOC_RED))
-        self._axis_x.SetWidth(2.0)
+        self._axis_x.SetWidth(0.5)
 
         # Y
         y_line = Geom_Line(gp_Ax1(origin, gp_Dir(0, 1, 0)))
         self._axis_y = AIS_Line(y_line)
         self._axis_y.SetColor(Quantity_Color(Quantity_NOC_GREEN))
-        self._axis_y.SetWidth(2.0)
+        self._axis_y.SetWidth(0.5)
 
         # Z
         z_line = Geom_Line(gp_Ax1(origin, gp_Dir(0, 0, 1)))
         self._axis_z = AIS_Line(z_line)
         self._axis_z.SetColor(Quantity_Color(Quantity_NOC_BLUE))
-        self._axis_z.SetWidth(2.0)
+        self._axis_z.SetWidth(0.5)
 
         ctx = self.display.Context
         ctx.Display(self._axis_x, True)
@@ -230,13 +235,13 @@ class AlumCamGUI(QMainWindow):
 
     # ===== Late init =====
     def _late_init_view(self):
-        print("[init] بدء تهيئة العرض الثلاثي")
-        from OCC.Core.Quantity import Quantity_Color, Quantity_TOC_RGB, Quantity_NOC_GRAY
-        from OCC.Core.V3d import V3d_TypeOfOrientation
+        from OCC.Core.Quantity import Quantity_Color, Quantity_TOC_RGB, Quantity_NOC_BLACK
+        from OCC.Core.Aspect import Aspect_GT_Rectangular, Aspect_GDM_Lines
 
         view = self.display.View
         viewer = self.display.Viewer
-        print("[init] تم الوصول إلى view و viewer")
+
+        print("[init] بدء تهيئة العرض الثلاثي")
 
         # خلفية رمادية
         light_gray = Quantity_Color(0.85, 0.85, 0.85, Quantity_TOC_RGB)
@@ -244,35 +249,38 @@ class AlumCamGUI(QMainWindow):
         print("[background] تم تعيين الخلفية إلى رمادي فاتح")
 
         # تفعيل المحاور
-        from OCC.Core.Quantity import Quantity_NOC_BLACK
-        from OCC.Core.Aspect import Aspect_GT_Rectangular, Aspect_GDM_Lines
-
-        # تفعيل المحاور
         try:
+            print("[trihedron] جاري تفعيل المحاور...")
             view.TriedronDisplay(True)
-            view.SetTrihedronSize(0.1)
-            view.SetTrihedronVisibility(True)
-            view.MustBeResized()
-            view.Redraw()
+            view.SetTrihedronSize(0.05)
+
             print("[trihedron] تم تفعيل المحاور")
         except Exception as e:
             print(f"[trihedron] error: {e}")
 
         # تفعيل الشبكة
         try:
-            viewer.ActivateGrid(Aspect_GT_Rectangular, Aspect_GDM_Lines, Aspect_GDM_Lines)
+            print("[grid] تفعيل الشبكة...")
+            viewer.ActivateGrid(Aspect_GT_Rectangular, Aspect_GDM_Lines)
+            viewer.SetPrivilegedPlane(0.0, 0.0, 1.0, 0.0)
             viewer.DisplayGrid()
             viewer.SetGridColor(Quantity_NOC_BLACK)
-            view.MustBeResized()
-            view.Redraw()
-            print("[grid] تم تفعيل الشبكة")
+            print("[grid] الشبكة مفعّلة")
         except Exception as e:
-            print(f"[grid] error: {e}")
+            print(f"[grid] خطأ في الشبكة: {e}")
 
-        # تحديث العارض
+        view.MustBeResized()
+        view.Redraw()
+        from OCC.Core.V3d import V3d_TypeOfOrientation
+        view.SetProj(V3d_TypeOfOrientation.V3d_XposYnegZpos)
+        view.SetZoom(1.0)
+        view.Redraw()
+
+        print("[view] تم إعادة رسم العرض")
+
         self.display.Context.UpdateCurrentViewer()
-        print("[context] تم تحديث السياق")
         self.draw_axes()
+        print("[context] تم تحديث السياق")
 
     def on_toggle_grid_axes(self, checked: bool):
         try:
@@ -324,9 +332,28 @@ class AlumCamGUI(QMainWindow):
 
             axis = self.axis_combo.currentText()
             distance = self.distance_spin.value()
-            self.loaded_shape = extrude_shape(self.loaded_shape, axis, distance)
+            result_shape = extrude_shape(self.loaded_shape, axis, distance)
 
-            self.display_shape_with_axes(self.loaded_shape)
+            from OCC.Core.AIS import AIS_Shape
+            from OCC.Core.Quantity import Quantity_Color, Quantity_TOC_RGB
+
+            body_color = Quantity_Color(0.15, 0.15, 0.15, Quantity_TOC_RGB)  # رمادي غامق جدًا
+
+            ais_shape = AIS_Shape(result_shape)
+            ais_shape.SetColor(body_color)
+            ais_shape.SetDisplayMode(1)  # ← عرض الحواف تلقائيًا
+
+            self.display.EraseAll()
+            self.display.Context.Display(ais_shape, True)
+            self.loaded_shape = result_shape
+
+            # إعادة عرض المحاور
+            ctx = self.display.Context
+            for axis in [self._axis_x, self._axis_y, self._axis_z]:
+                if axis:
+                    ctx.Display(axis, True)
+
+            self.display.FitAll()
 
             if self.tool_dialog.isVisible():
                 self.tool_dialog.hide()
@@ -348,15 +375,27 @@ class AlumCamGUI(QMainWindow):
     def preview_clicked(self):
         if not self.loaded_shape:
             return
+
         x = float(self.hole_x.text())
         y = float(self.hole_y.text())
         z = float(self.hole_z.text())
         dia = float(self.hole_dia.text())
         axis = self.axis_hole_combo.currentText()
+
         if self.hole_preview:
             self.display.EraseAll()
-            self.display.DisplayShape(self.loaded_shape, update=True)
-        self.hole_preview = preview_hole(x, y, z, dia, axis)
-        self.display.DisplayShape(self.loaded_shape, update=False)
+
+        # عرض الشكل الأساسي بلون رمادي غامق
+        from OCC.Core.AIS import AIS_Shape
+        from OCC.Core.Quantity import Quantity_Color, Quantity_TOC_RGB
+
+        dark_gray = Quantity_Color(0.3, 0.3, 0.3, Quantity_TOC_RGB)
+        ais_loaded = AIS_Shape(self.loaded_shape)
+        ais_loaded.SetColor(dark_gray)
+        self.display.Context.Display(ais_loaded, True)
+
         self.display_shape_with_axes(self.loaded_shape)
+
+        # عرض المعاينة باللون الأحمر
+        self.hole_preview = preview_hole(x, y, z, dia, axis)
         self.display.DisplayShape(self.hole_preview, color="RED", update=True)
