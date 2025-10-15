@@ -2,8 +2,7 @@ from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QComboBox, QDoubleSpinBox,
     QPushButton, QLineEdit, QFormLayout, QWidget,
     QStackedWidget, QLabel, QHBoxLayout, QFrame, QFileDialog, QMessageBox,
-    QScrollArea, QGridLayout, QListWidget
-
+    QScrollArea, QGridLayout
 )
 from PyQt5.QtCore import Qt, QPoint
 from PyQt5.QtGui import QPixmap
@@ -236,65 +235,22 @@ def create_tool_window(parent):
 
     stacked.addWidget(profile_page)
 
-    # ==================== Profiles Manager Page (Redesigned) ====================
+    # ==================== Profiles Manager Page ====================
     manager_page = QWidget()
-    manager_layout = QHBoxLayout(manager_page)
-    manager_layout.setContentsMargins(8, 8, 8, 8)
-    manager_layout.setSpacing(12)
+    manager_layout = QVBoxLayout(manager_page)
+    manager_layout.setContentsMargins(0, 0, 0, 0)
 
-    # قائمة الأسماء على اليسار
-    profile_list = QListWidget()
-    profile_list.setFixedWidth(200)
-    profile_list.setStyleSheet("font-size: 14px;")
-    manager_layout.addWidget(profile_list)
+    scroll = QScrollArea()
+    scroll.setWidgetResizable(True)
+    manager_layout.addWidget(scroll)
 
-    # قسم العرض والمعلومات على اليمين
-    right_panel = QVBoxLayout()
+    container = QWidget()
+    scroll.setWidget(container)
+    grid = QGridLayout(container)
+    grid.setContentsMargins(8, 8, 8, 8)
+    grid.setHorizontalSpacing(12)
+    grid.setVerticalSpacing(8)
 
-    image_label = QLabel("No Image")
-    image_label.setFixedSize(400, 250)
-    image_label.setStyleSheet("border: 1px solid gray; background-color: white;")
-    image_label.setScaledContents(True)
-    right_panel.addWidget(image_label)
-
-    info_label = QLabel("Select a profile to view details.")
-    info_label.setStyleSheet("font-size: 14px;")
-    right_panel.addWidget(info_label)
-
-    btn_apply = QPushButton("✅ Apply")
-    btn_apply.setFixedWidth(120)
-    right_panel.addWidget(btn_apply)
-
-    def on_profile_selected(item):
-        name = item.text()
-        image_path = f"images/{name}.png"
-        if Path(image_path).exists():
-            image_label.setPixmap(QPixmap(image_path))
-        else:
-            image_label.setText("No Image")
-        info_label.setText(f"Name: {name}\nCode: ...\nDims: ...\nNotes: ...")
-
-        profile_list.itemClicked.connect(on_profile_selected)
-
-        def insert_selected_profile():
-            selected = profile_list.currentItem()
-            if not selected:
-                return
-            name = selected.text()
-            try:
-                shape = load_dxf_file(Path(f"profiles/{name}.dxf"))  # ← عدل المسار حسب الحاجة
-                if shape is None or shape.IsNull():
-                    raise RuntimeError("Invalid shape.")
-                parent.display.EraseAll()
-                parent.display.DisplayShape(shape, update=True)
-                parent.display.FitAll()
-                print(f"[✅] Profile '{name}' inserted.")
-                dialog.hide()
-            except Exception as e:
-                QMessageBox.critical(dialog, "Error", f"Failed to load profile:\n{e}")
-        btn_apply.clicked.connect(insert_selected_profile)
-
-    manager_layout.addLayout(right_panel)
     stacked.addWidget(manager_page)
 
     # ==================== Tools Manager Page ====================
@@ -482,13 +438,9 @@ def create_tool_window(parent):
                 )
             )
 
-            profiles = db.list_profiles()
-            profile_list.clear()
-            for prof in profiles:
-                pid, name, *_ = prof
-                profile_list.addItem(name)
-
-
+            grid.addWidget(img_label, row_idx, 0)
+            grid.addWidget(text_label, row_idx, 1)
+            grid.addWidget(load_btn, row_idx, 2)
 
 
 
@@ -585,33 +537,6 @@ def create_tool_window(parent):
             header.setText("Extrude")
         dialog.show()
         dialog.raise_()
-
-    def on_profile_selected(item):
-        name = item.text()
-        image_path = f"images/{name}.png"
-        if Path(image_path).exists():
-            image_label.setPixmap(QPixmap(image_path))
-        else:
-            image_label.setText("No Image")
-        # استبدل هذه القيم ببيانات حقيقية من قاعدة البيانات إذا أردت
-        info_label.setText(f"Name: {name}\nCode: ...\nDims: ...\nNotes: ...")
-
-    def insert_selected_profile():
-        selected = profile_list.currentItem()
-        if not selected:
-            return
-        name = selected.text()
-        try:
-            shape = load_dxf_file(Path(f"profiles/{name}.dxf"))  # ← عدل المسار حسب الحاجة
-            if shape is None or shape.IsNull():
-                raise RuntimeError("Invalid shape.")
-            parent.display.EraseAll()
-            parent.display.DisplayShape(shape, update=True)
-            parent.display.FitAll()
-            print(f"[✅] Profile '{name}' inserted.")
-            dialog.hide()
-        except Exception as e:
-            QMessageBox.critical(dialog, "Error", f"Failed to load profile:\n{e}")
 
     class AddToolTypeDialog(QDialog):
         def __init__(self, tool_types, parent=None):
