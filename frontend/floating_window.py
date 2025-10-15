@@ -4,8 +4,10 @@ from PyQt5.QtWidgets import (
     QStackedWidget, QLabel, QHBoxLayout, QFrame, QFileDialog, QMessageBox,
     QScrollArea, QGridLayout
 )
-from PyQt5.QtCore import Qt, QPoint
+
 from PyQt5.QtGui import QPixmap
+from PyQt5.QtCore import Qt, QPoint
+
 from dxf_tools import  load_dxf_file
 from pathlib import Path
 import shutil
@@ -71,6 +73,8 @@ def create_tool_window(parent):
             type_combo.setCurrentText(dialog.name_input.text())
             update_tool_image(dialog.name_input.text())
 
+    from PyQt5.QtCore import Qt
+    from PyQt5.QtGui import QPixmap
 
     dialog = DraggableDialog(parent)
     dialog.setObjectName("ToolFloatingWindow")
@@ -235,21 +239,43 @@ def create_tool_window(parent):
 
     stacked.addWidget(profile_page)
 
-    # ==================== Profiles Manager Page ====================
+    # ==================== Profiles Manager Page (NEW LAYOUT) ====================
+    from PyQt5.QtWidgets import QListWidget, QListWidgetItem
+
     manager_page = QWidget()
-    manager_layout = QVBoxLayout(manager_page)
-    manager_layout.setContentsMargins(0, 0, 0, 0)
+    manager_layout = QHBoxLayout(manager_page)
+    manager_layout.setContentsMargins(8, 8, 8, 8)
+    manager_layout.setSpacing(12)
 
-    scroll = QScrollArea()
-    scroll.setWidgetResizable(True)
-    manager_layout.addWidget(scroll)
 
-    container = QWidget()
-    scroll.setWidget(container)
-    grid = QGridLayout(container)
-    grid.setContentsMargins(8, 8, 8, 8)
-    grid.setHorizontalSpacing(12)
-    grid.setVerticalSpacing(8)
+
+
+    # ===== Left: Names list =====
+    profile_list = QListWidget()
+    profile_list.setMinimumWidth(120)
+    manager_layout.addWidget(profile_list, 1)
+
+    # ===== Right: Details panel =====
+    detail_panel = QVBoxLayout()
+    detail_panel.setSpacing(6)
+    manager_layout.addLayout(detail_panel, 2)
+
+
+
+    preview_label = QLabel()
+    preview_label.setFixedSize(200, 200)
+    preview_label.setAlignment(Qt.AlignCenter)
+    preview_label.setStyleSheet("border: 1px solid #ccc; background: #fafafa;")
+    detail_panel.addWidget(preview_label)
+
+    info_label = QLabel()
+    info_label.setWordWrap(True)
+    info_label.setText("<i>Select a profile to view details.</i>")
+    detail_panel.addWidget(info_label)
+
+    ok_button = QPushButton("OK / Load")
+    ok_button.setEnabled(False)
+    detail_panel.addWidget(ok_button)
 
     stacked.addWidget(manager_page)
 
@@ -354,97 +380,84 @@ def create_tool_window(parent):
     choose_btn.clicked.connect(on_choose_dxf)
 
     # ---------- Profiles Manager helpers ----------
-    def refresh_profiles_list():
-        # نظف المحتوى أولًا
-        while grid.count():
-            item = grid.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
+    from PyQt5.QtWidgets import QListWidgetItem
+    from PyQt5.QtCore import Qt
 
-        profiles = db.list_profiles()
-        if not profiles:
-            grid.addWidget(QLabel("لا توجد بروفايلات محفوظة."), 0, 0)
+    def refresh_profiles_list():
+        print("🟡 refresh_profiles_list() called")
+
+        try:
+            profiles = db.list_profiles()
+            print("DEBUG profiles =", profiles)
+
+            profile_list.clear()
+
+            if not profiles:
+                profile_list.addItem("⚠️ لا توجد بروفايلات محفوظة")
+                profile_list.setEnabled(False)
+                return
+
+            profile_list.setEnabled(True)
+
+            for row in profiles:
+                try:
+                    if len(row) < 9:
+                        print(f"⚠️ Skipping invalid row: {row}")
+                        continue
+
+                    pid, name, code, dims, notes, dxf_path, brep_path, img_path, created = row
+
+                    item = QListWidgetItem(name)
+                    item.setData(Qt.UserRole, {
+                        "name": name,
+                        "dxf_path": dxf_path or ""
+                    })
+                    profile_list.addItem(item)
+
+                except Exception as inner_e:
+                    print(f"❌ Error while adding profile row: {inner_e}")
+
+            print("✅ profile_list count:", profile_list.count())
+
+        except Exception as e:
+            print(f"❌ refresh_profiles_list() failed: {e}")
+
+    from pathlib import Path
+    from PyQt5.QtGui import QPixmap
+    from PyQt5.QtCore import Qt
+
+    def on_profile_selected():
+        current_row = profile_list.currentRow()
+        if current_row < 0 or current_row >= len(profiles):
+            print("⚠️ Invalid profile selection")
             return
 
-        for row_idx, prof in enumerate(profiles):
-            pid, name, code, dims, notes, dxf_path, brep_path, img_path, created = prof
+        data = profiles[current_row]
+        print(f"✅ Selected profile: {data}")
 
-            img_label = QLabel()
-            img_label.setFixedSize(64, 64)
-            img_label.setFrameShape(QFrame.Box)
-            img_label.setLineWidth(1)
-
-            pix = QPixmap()
-            if Path(img_path).exists():
-                pix.load(str(img_path))
-            if not pix.isNull():
-                img_label.setPixmap(pix.scaled(64, 64, Qt.KeepAspectRatio, Qt.SmoothTransformation))
-            else:
-                img_label.setText("No\nImage")
-                img_label.setAlignment(Qt.AlignCenter)
-
-            text_label = QLabel(
-                f"<b>{name}</b><br>"
-                f"Code: {code or '-'}<br>"
-                f"Dims: {dims or '-'}<br>"
-                f"<i>{notes or ''}</i>"
-            )
-            text_label.setWordWrap(True)
-
-            load_btn = QPushButton("Load")
-            load_btn.setFixedWidth(70)
-
-            # ✅ تعديل make_loader لإضافة البروفايل عند الضغط على Load فقط
-            def make_loader(dxf_path_local, profile_name):
-                def _loader():
-                    try:
-                        print("🟡 DEBUG - profile_name:", profile_name)  # ← هذا ما ظهر عندك
-                        shape = load_dxf_file(Path(dxf_path_local))
-                        if shape is None or shape.IsNull():
-                            raise RuntimeError("❌ DXF parsing returned no shape.")
-
-                        # ✅ الحصول على العارض من النافذة الرئيسية
-                        main_window = dialog.parent()
-                        if not hasattr(main_window, "display") or main_window.display is None:
-                            raise RuntimeError("❌ Main display not initialized.")
-
-                        main_window.display.EraseAll()
-                        main_window.display.DisplayShape(shape, update=True)
-                        main_window.loaded_shape = shape  # تمرير الشكل إلى نافذة الإكسترود
-                        main_window.display.FitAll()
-
-                        # 🟡 إضافة البروفايل إلى اللوحة الجانبية عند التحميل فقط
-                        print("🟡 DEBUG - profile_name:", profile_name)
-                        print("🟡 DEBUG - main_window:", main_window)
-                        print("🟡 DEBUG - has op_browser:", hasattr(main_window, "op_browser"))
-
-                        if hasattr(main_window, "op_browser"):
-                            main_window.op_browser.add_profile(profile_name)
-                            main_window.op_browser.expandAll()  # تأكد من ظهور العناصر الجديدة
-                            main_window.op_browser.update()
-                            main_window.op_browser.repaint()
-                            print(f"🟢 Added profile to browser: {profile_name}")
-
-                        print(f"✅ Loaded profile from {dxf_path_local}")
-                    except Exception as e:
-                        QMessageBox.critical(dialog, "Error", f"Failed to load DXF:\n{e}")
-
-                return _loader
-
-            load_btn.clicked.connect(
-                make_loader(
-                    dxf_path if dxf_path and Path(dxf_path).exists() else None,
-                    name
+        # --- عرض الصورة ---
+        img_path = data[7]
+        if img_path and img_path.lower() != "none" and Path(img_path).exists():
+            pixmap = QPixmap(img_path)
+            profile_image_label.setPixmap(
+                pixmap.scaled(
+                    profile_image_label.width(),
+                    profile_image_label.height(),
+                    Qt.KeepAspectRatio,
+                    Qt.SmoothTransformation
                 )
             )
+        else:
+            profile_image_label.clear()
+            print(f"⚠️ No valid image for: {data[1]}")
 
-            grid.addWidget(img_label, row_idx, 0)
-            grid.addWidget(text_label, row_idx, 1)
-            grid.addWidget(load_btn, row_idx, 2)
+        # --- عرض النصوص ---
+        name_label.setText(f"Name: {data[1]}")
+        code_label.setText(f"Code: {data[2]}")
+        size_label.setText(f"Size: {data[3]}")
+        desc_label.setText(f"Desc: {data[4]}")
 
-
-
-
+    profile_list.currentItemChanged.connect(lambda current, prev: on_profile_selected())
 
     # ================== زر Apply ==================
     def handle_apply():
@@ -522,12 +535,59 @@ def create_tool_window(parent):
                 QMessageBox.critical(dialog, "Error", f"Failed to save profile:\n{e}")
                 return
 
+    def on_ok_clicked():
+        item = profile_list.currentItem()
+        if not item:
+            print("⚠️ No profile selected.")
+            return
+
+        data = item.data(Qt.UserRole)
+        if not data:
+            print("⚠️ No data for selected item.")
+            return
+
+        dxf_path = data.get("dxf_path")
+        name = data.get("name", "Unknown")
+
+        if not dxf_path or not Path(dxf_path).exists():
+            QMessageBox.warning(dialog, "Load Error", f"DXF file not found:\n{dxf_path}")
+            return
+
+        print(f"🟡 Loading profile: {name} from {dxf_path}")
+
+        try:
+            shape = load_dxf_file(Path(dxf_path))
+            if shape is None or shape.IsNull():
+                raise RuntimeError("❌ DXF parsing returned no shape.")
+
+            main_window = dialog.parent()
+            if not hasattr(main_window, "display") or main_window.display is None:
+                raise RuntimeError("❌ Main display not initialized.")
+
+            main_window.display.EraseAll()
+            main_window.display.DisplayShape(shape, update=True)
+            main_window.loaded_shape = shape
+            main_window.display.FitAll()
+
+            if hasattr(main_window, "op_browser"):
+                main_window.op_browser.add_profile(name)
+
+            print(f"🟢 Loaded successfully → {name}")
+            dialog.hide()
+
+        except Exception as e:
+            print(f"❌ Error while loading: {e}")
+            QMessageBox.critical(dialog, "Load Error", str(e))
+
+
+    ok_button.clicked.connect(on_ok_clicked)
+
     apply_btn.clicked.connect(handle_apply)
 
     def show_page(index: int):
         stacked.setCurrentIndex(index)
         if index == 2:
-            refresh_profiles_list()
+            QTimer.singleShot(50, refresh_profiles_list)  # ← تأخير بسيط يضمن أن الـ UI جاهز
             header.setText("Profiles Manager")
         elif index == 1:
             header.setText("Profile")
